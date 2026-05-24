@@ -1,0 +1,42 @@
+services:
+  - type: web
+    name: finsight-backend
+    runtime: python
+    rootDir: .
+    buildCommand: pip install -r Finsight/requirements.txt
+    startCommand: uvicorn Finsight.api.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: DS_MODEL_NAME
+        value: llama-3.3-70b-versatile
+      - key: DS_API_KEY
+        sync: false
+      - key: DS_BASE_URL
+        value: https://api.groq.com/openai/v1
+      - key: WRITER_MODEL_NAME
+        value: llama-3.3-70b-versatile
+      - key: WRITER_API_KEY
+        sync: false
+      - key: WRITER_BASE_URL
+        value: https://api.groq.com/openai/v1
+      - key: VLM_MODEL_NAME
+        value: gemini-2.5-flash
+      - key: VLM_API_KEY
+        sync: false
+      - key: VLM_BASE_URL
+        value: https://generativelanguage.googleapis.com/v1beta/openai
+      - key: EMBEDDING_MODEL_NAME
+        value: all-MiniLM-L6-v2
+      - key: SERPER_API_KEY
+        sync: false
+      - key: SEC_USER_AGENT
+        sync: false
+      - key: FRED_API_KEY
+        sync: false
+      - key: OUTPUT_DIR
+        value: /tmp/finsight_outputs
+      - key: CHECKPOINT_DIR
+        value: /tmp/finsight_checkpoints
+      - key: CORS_ORIGINS
+        value: "*"
+      - key: BACKEND_PUBLIC_URL
+        sync: false   # Set this to your Render backend URL after deploy, e.g. https://finsight-backend.onrender.com
