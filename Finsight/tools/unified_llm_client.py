@@ -118,7 +118,7 @@ class UnifiedLLMClient:
         Args:
             model_type: One of "llm", "writer", or "vlm"
         """
-        self.settings = get_settings()
+        self.settings = get_settings(validate_required=False)
         self.model_type = model_type
 
         if model_type == "llm":
@@ -830,7 +830,7 @@ class EmbeddingClient:
     """Local embedding client using sentence-transformers."""
 
     def __init__(self, model_name: Optional[str] = None) -> None:
-        settings = get_settings()
+        settings = get_settings(validate_required=False)
         self.model_name = model_name or settings.embedding_model_name
         self._model = None
 

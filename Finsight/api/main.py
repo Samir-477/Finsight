@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import asyncio
 import os
+import traceback
 import uuid
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
@@ -135,14 +136,56 @@ async def websocket_progress(websocket: WebSocket, job_id: str):
 
 def _run_pipeline_sync(request: ResearchRequest, job_id: str = "") -> dict:
     """Synchronous pipeline execution — runs inside ThreadPoolExecutor."""
-    pipeline = EnhancedFinSightPipeline(output_dir=_OUTPUT_DIR)
-    return pipeline.run(
-        company_name=request.target_name,
-        ticker=request.stock_code,
-        analysis_goal=f"Comprehensive analysis of {request.target_name}",
-        fred_series_ids={"gdp": "GDP"},
-        run_id=job_id,          # ← passed through to chart generator for unique filenames
+    try:
+        pipeline = EnhancedFinSightPipeline(output_dir=_OUTPUT_DIR)
+        return pipeline.run(
+            company_name=request.target_name,
+            ticker=request.stock_code,
+            analysis_goal=f"Comprehensive analysis of {request.target_name}",
+            fred_series_ids={"gdp": "GDP"},
+            run_id=job_id,          # ← passed through to chart generator for unique filenames
+        )
+    except Exception as exc:
+        return _fallback_report_artifacts(request, exc)
+
+
+def _fallback_report_artifacts(request: ResearchRequest, exc: Exception) -> dict:
+    """Return a no-LLM report when live APIs or model calls fail in production."""
+    from Finsight.tools.unified_llm_client import _template_fallback
+
+    try:
+        from Finsight.writing.enhanced_report_writer import fetch_live_data
+        data = fetch_live_data(request.stock_code.upper())
+    except Exception:
+        data = {"ticker": request.stock_code.upper(), "company_name": request.target_name}
+
+    data["company_name"] = request.target_name
+    data["ticker"] = request.stock_code.upper()
+    sections = [
+        "Executive Summary",
+        "Company Overview",
+        "Financial Analysis",
+        "Stock Performance",
+        "Competitive Analysis",
+        "Risk Factors",
+        "Macro Environment",
+        "Outlook & Catalysts",
+        "Investment Recommendation",
+    ]
+    warning = (
+        "> Demo fallback note: the full multi-agent pipeline hit a production data/model error, "
+        "so FinSight generated this template-backed report from available market data instead.\n\n"
+        f"`{type(exc).__name__}: {str(exc)[:500]}`\n\n"
     )
+    markdown = f"# {request.target_name} ({request.stock_code.upper()}) — FinSight Research Report\n\n{warning}"
+    for section in sections:
+        markdown += f"\n---\n\n{_template_fallback(section, data)}\n"
+    return {
+        "markdown": markdown,
+        "word_count": len(markdown.split()),
+        "fallback": True,
+        "fallback_error": str(exc),
+    }
 
 
 async def run_pipeline(job_id: str, request: ResearchRequest):
@@ -244,7 +287,6 @@ async def run_pipeline(job_id: str, request: ResearchRequest):
                    message=f"Report ready — {word_count:,} words")
 
     except Exception as e:
-        import traceback
         job.status = "failed"
         job.error = str(e)
         await emit("error", error=str(e), detail=traceback.format_exc()[-500:])

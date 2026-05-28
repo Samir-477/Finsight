@@ -13,12 +13,13 @@ class SearchClient:
     NEWS_ENDPOINT = "https://google.serper.dev/news"
 
     def __init__(self, api_key: str, timeout: float = 15.0) -> None:
-        if not api_key:
-            raise ValueError("Serper API key must be provided for SearchClient")
         self.api_key = api_key
         self.timeout = timeout
+        self.enabled = bool(api_key)
 
     def _request(self, endpoint: str, payload: Dict[str, Any]) -> Dict[str, Any]:
+        if not self.enabled:
+            return {}
         headers = {
             "X-API-KEY": self.api_key,
             "Content-Type": "application/json",

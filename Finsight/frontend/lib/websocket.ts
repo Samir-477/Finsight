@@ -10,6 +10,7 @@ export interface ProgressEvent {
   message?: string;
   progress?: number;
   error?: string;
+  detail?: string;
   report_path?: string;
 }
 

@@ -39,27 +39,40 @@ class DataCollectionAgent(Agent):
 
         artifacts: Dict[str, Any] = {}
 
-        stock_df = self.market_collector.get_stock_history(ticker=ticker, period=store_history_period)
-        stock_uid = self._store_dataframe(
-            name=f"{ticker}_stock_history",
-            df=stock_df,
-            description=f"{ticker} historical prices ({store_history_period})",
-            tags=["market", "price", ticker],
-        )
-        artifacts["stock_history_uid"] = stock_uid
+        try:
+            stock_df = self.market_collector.get_stock_history(ticker=ticker, period=store_history_period)
+            stock_uid = self._store_dataframe(
+                name=f"{ticker}_stock_history",
+                df=stock_df,
+                description=f"{ticker} historical prices ({store_history_period})",
+                tags=["market", "price", ticker],
+            )
+            artifacts["stock_history_uid"] = stock_uid
+        except Exception as exc:
+            artifacts["stock_history_error"] = str(exc)
+            self.orchestrator.register_data(
+                name=f"{ticker}_stock_history_unavailable",
+                value={"ticker": ticker, "error": str(exc)},
+                description=f"{ticker} stock history unavailable",
+                tags=["market", "price", ticker, "unavailable"],
+                source="data_collection_agent",
+            )
 
         if fred_series_ids:
             macro_uids = {}
             for label, series_id in fred_series_ids.items():
-                series = self.market_collector.get_fred_series(series_id)
-                macro_df = series.to_frame(name=label)
-                uid = self._store_dataframe(
-                    name=f"fred_{label}",
-                    df=macro_df,
-                    description=f"FRED series {series_id} for {label}",
-                    tags=["macro", "fred", series_id],
-                )
-                macro_uids[label] = uid
+                try:
+                    series = self.market_collector.get_fred_series(series_id)
+                    macro_df = series.to_frame(name=label)
+                    uid = self._store_dataframe(
+                        name=f"fred_{label}",
+                        df=macro_df,
+                        description=f"FRED series {series_id} for {label}",
+                        tags=["macro", "fred", series_id],
+                    )
+                    macro_uids[label] = uid
+                except Exception as exc:
+                    macro_uids[label] = f"unavailable: {exc}"
             artifacts["macro_series_uids"] = macro_uids
 
         filing_text = self.sec_collector.get_latest_10k(ticker)

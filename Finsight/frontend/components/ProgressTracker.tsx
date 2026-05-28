@@ -70,7 +70,8 @@ export function ProgressTracker({ job, events }: ProgressTrackerProps) {
     events.filter(e => e.type === "stage_done" && e.stage).map(e => e.stage as string)
   );
 
-  const latestMessage = events.filter(e => e.message).at(-1)?.message;
+  const latestEvent = events.filter(e => e.message || e.error || e.detail).at(-1);
+  const latestMessage = latestEvent?.message || latestEvent?.error || latestEvent?.detail;
   const stageIndex = STAGES.findIndex(s => s.id === currentStage);
 
   return (
@@ -207,7 +208,9 @@ export function ProgressTracker({ job, events }: ProgressTrackerProps) {
                   }`}>
                     {event.type}
                   </span>
-                  <span className="flex-1">{event.message || event.stage || ""}</span>
+                  <span className="flex-1 whitespace-pre-wrap">
+                    {event.message || event.error || event.detail || event.stage || ""}
+                  </span>
                   {typeof event.progress === "number" && (
                     <span className="shrink-0 text-blue-400 tabular-nums">{event.progress}%</span>
                   )}

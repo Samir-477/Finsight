@@ -30,9 +30,7 @@ class MarketDataCollector:
     """Fetches market and macro data from yfinance and FRED."""
 
     def __init__(self, fred_api_key: str) -> None:
-        if not fred_api_key:
-            raise ValueError("FRED API key must be provided for MarketDataCollector")
-        self.fred = Fred(api_key=fred_api_key)
+        self.fred = Fred(api_key=fred_api_key) if fred_api_key else None
 
     def get_stock_history(self, ticker: str, period: str = "2y") -> pd.DataFrame:
         data = yf.download(ticker, period=period, progress=False, auto_adjust=True)
@@ -41,6 +39,8 @@ class MarketDataCollector:
         return data
 
     def get_fred_series(self, series_id: str) -> pd.Series:
+        if self.fred is None:
+            raise RuntimeError("FRED API key is not configured")
         series = self.fred.get_series(series_id)
         if series is None or series.empty:
             raise RuntimeError(f"No FRED data for series {series_id}")

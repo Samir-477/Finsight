@@ -25,7 +25,7 @@ class EnhancedFinSightPipeline:
     """Enhanced pipeline with parallel perspectives and 20,000+ word reports."""
 
     def __init__(self, output_dir: Path | None = None, log_path: Path | None = None) -> None:
-        self.settings = get_settings()
+        self.settings = get_settings(validate_required=False)
         self.orchestrator = Orchestrator(log_path=log_path)
         self.gemini = GeminiClient()
         
